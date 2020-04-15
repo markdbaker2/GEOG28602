@@ -1,0 +1,40 @@
+---
+title: "Geographic Information Science III - Lab 2"
+author: "Mark Baker"
+output: pdf_document
+---
+
+## Loading Libraries:
+```{r}
+library(sf)
+library(spData)
+```
+
+## The Dataset of Interest:
+For this lab, I will be using the $world$ dataset that is in the $spData$ package
+```{r}
+class(world)
+```
+Looking at the class of the world dataset, we can see that it is loaded as a "data.frame" in simple features as desired.
+
+## Summary of Key Variables in World Dataset:
+```{r}
+summary(st_drop_geometry(world[ , c("area_km2", "pop", "lifeExp", "gdpPercap")]))
+```
+
+Looking at the summary table, we see that the mean area is $832558 km^2$ for all countries, the mean population is $4.282e+07$ people, the mean life expectancy is $70.85$ years, and the mean GDP per capita is $17106.0$.
+\newline
+Based on the findings above, future analysis will focus on GDP per capita.
+## GDP per Capita
+```{r, fig.height = 4}
+hist(world$gdpPercap, main = "Distribution of GDP per capita for all Countries",
+     ylim=c(0, 80), xlab = "GDP per capita", col = "gray")
+```
+
+Based on the histogram above, it is clear that a majority of countries have GDP per capita less than $\$20,000$.
+
+```{r, fig.height = 4}
+plot(world[, "gdpPercap"], main = "GDP per Capita for all countries")
+```
+\newline
+Specifically examining the generated map, we see that areas with higher GDP per capita are located in North America, Europe, the Middle East, and Austrailia.
