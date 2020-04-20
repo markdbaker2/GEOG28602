@@ -25,6 +25,7 @@ summary(st_drop_geometry(world[ , c("area_km2", "pop", "lifeExp", "gdpPercap")])
 Looking at the summary table, we see that the mean area is $832558 km^2$ for all countries, the mean population is $4.282e+07$ people, the mean life expectancy is $70.85$ years, and the mean GDP per capita is $17106.0$.
 \newline
 Based on the findings above, future analysis will focus on GDP per capita.
+
 ## GDP per Capita
 ```{r, fig.height = 4}
 hist(world$gdpPercap, main = "Distribution of GDP per capita for all Countries",
@@ -38,3 +39,6 @@ plot(world[, "gdpPercap"], main = "GDP per Capita for all countries")
 ```
 \newline
 Specifically examining the generated map, we see that areas with higher GDP per capita are located in North America, Europe, the Middle East, and Austrailia.
+
+### Trouble-Shooting Log:
+Working through this lab, I encountered no major problems.
