@@ -1,0 +1,73 @@
+---
+title: "Geographic Information Science III - Lab 3"
+author: "Mark Baker"
+output: pdf_document
+---
+
+### Loading Necessary Libraries
+```{r}
+library(jsonlite)
+library(ggmap)
+```
+
+## Bike Share Data
+For this lab, I will be using live station data from the San Francisco bike share scheme, which was presented in \textit{Singleton et al} lab, "Linking R to the Web." 
+
+```{r}
+bikes <-fromJSON(txt="http://feeds.bayareabikeshare.com/stations/stations.json")
+## Accessing dataframe
+bikes_SF <- data.frame(bikes[2])
+head(bikes_SF)
+```
+
+In this dataset, we have access to the following parameters: station name, available docks, total docks, latitude, longitude, number of available bikes, and the stations address.
+
+## Data Cleaning
+In this portion of the lab, I will an entries from the data that do not have Latitude or Longitude Values. Additionally, I drop variables that will not be examined in this analysis, and will generate binary variables to signal locations where there are either fewer than 5 bikes available or fewer than 5 dock left open.
+
+```{r}
+bikes_SF <- bikes_SF[!is.na(bikes_SF$stationBeanList.longitude),]
+bikes_SF <- bikes_SF[!is.na(bikes_SF$stationBeanList.latitude),]
+bikes_SF_clean <-subset(bikes_SF, select = -c(stationBeanList.stAddress2,
+                                              stationBeanList.statusKey,
+                                              stationBeanList.statusValue,
+                                              stationBeanList.testStation,
+                                              stationBeanList.lastCommunicationTime,
+                                              stationBeanList.landMark))
+# Stations with more than 5 bikes available.
+bikes_SF_clean$fewerthan5ab <- ifelse(bikes_SF_clean$stationBeanList.availableBikes < 5, 1, 0)
+# Stations with more than 5 available docs
+bikes_SF_clean$lessthan5ad <- ifelse(bikes_SF_clean$stationBeanList.availableDocks < 5, 1, 0)
+summary(bikes_SF_clean)
+```
+
+## Generating Base Map using \textbf{ggmap}
+```{r}
+## Generating base map
+register_google(key = "AIzaSyDixf2h9hBKOIhXOHMZm3DF3BK18e8Tcz0") #Note API regenerated after lab was submitted
+map <- get_map(c(-122.4, 37.75), zoom= 12,maptype = "roadmap")
+P <- ggmap(map) 
+```
+
+# Locations with Fewer Than 5 Bikes Available
+In this section, I will highlight the areas that have fewer than 5 bikes, emphasizing stations that are more likely to not have available bikes at all times.
+
+```{r}
+bikes_SF_5_bikes <- bikes_SF_clean[bikes_SF_clean$fewerthan5ab == 1,]
+P + geom_point(data=bikes_SF_5_bikes, aes(x=stationBeanList.longitude, y=stationBeanList.latitude),size=1.5)
+```
+\newline
+Based on the resulting output, it appears that individuals near the Financial District are more likely to encounter stations with fewer than 5 bikes. This observation means that during peak usage hours, it may be likely that users in this area are going to experience some difficulty in initially locating available bikes.
+
+# Locations with Fewer Than 5 Docks Available
+In this section, I will highlight the areas that have fewer than 5 docks, emphasizing stations that are more likely to not have available docks at all times.
+
+```{r}
+bikes_SF_5_docks <- bikes_SF_clean[bikes_SF_clean$lessthan5ad == 1,]
+P + geom_point(data=bikes_SF_5_docks, aes(x=stationBeanList.longitude, y=stationBeanList.latitude),size=1.5)
+```
+\newline
+Based on this output, it appears that users near the Mission District may have difficulties dropping off their bikes. Additionally, in San Fransico, there appear to be fewer stations that have fewer than 5 spaces avaible, signalling that users most likely do as frequently run into problems with drop offs compared to finding available. 
+
+## Trouble Shooting Log:
+During this Lab, I encountered difficulties setting up the \textbf{ggmaps} library. This resulted from the new requirement that an API key be utilized. After creating an API Key, I did not encounter any other major problems.
