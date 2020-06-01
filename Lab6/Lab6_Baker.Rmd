@@ -1,0 +1,279 @@
+---
+title: "Lab 6: Geodemographics & Data Reduction"
+author: "Mark Baker"
+output: pdf_document
+---
+
+# Overview
+For this lab, I am following the Geodemographics & Data Reduction Lab from Urban Analytics (Singleton 2017). Most of the code presented in this lab will be directly pulled from the tutorial with my interpretation of the steps that are being taken. Additionally, at the end of this lab, I aim to improve the final map generated highlighting clustered communities. I have included the data used for this assignment as well.
+
+## Loading Data
+
+First, we will load in the main data source for this assignment.
+```{r}
+load("./data/census_2011_UK_OA.RData")
+```
+From this, I will then crop the data to highlight Liverpool.
+
+```{r}
+Census_2011_Count <- merge(Liverpool,Census_2011_Count_All,by="OA",all.x=TRUE)
+```
+## Beginning Aggregation
+Now, looking at the the first 6 rows in the OAC_Input_Lookup Dataset, we can see that aggregation is necessary.
+```{r}
+head(OAC_Input_Lookup[,])
+```
+
+Preforming this aggregation within a for loop:
+```{r}
+OAC_Input <- as.data.frame(Census_2011_Count$OA) 
+colnames(OAC_Input) <- "OA"
+#Loop through each row in the OAC input table
+for (n in 1:nrow(OAC_Input_Lookup)){
+
+  # Get the variables to aggregate for the row specified by n
+  select_vars <- OAC_Input_Lookup[n,"England_Wales"] # Create a list of the variables to select
+  select_vars <- unlist(strsplit(paste(select_vars),",")) # Create variable name
+  vname <- OAC_Input_Lookup[n,"VariableCode"]
+  # Creates a sum of the census variables for each Output Area
+  tmp <- data.frame(rowSums(Census_2011_Count[,select_vars, drop=FALSE])) 
+  colnames(tmp) <- vname
+  # Append new variable to the OAC_Input object
+  OAC_Input <- cbind(OAC_Input,tmp) # Remove temporary objects
+  remove(list = c("vname","tmp"))
+} # END: Loop through each row in the OAC input table
+```
+
+We have done this for all variable codes including k035, which we are not necessarily interested in. For this reason, we will set this value to NULL.
+```{r}
+OAC_Input$k035 <- NULL
+```
+Doing the protocol presented above, we generated the numerators of interest. Now we will do the same for
+the denominators.
+
+```{r}
+OAC_Input_den <- as.data.frame(Census_2011_Count$OA) 
+colnames(OAC_Input_den) <- "OA"
+# Create a list of denominators
+den_list <- unique(OAC_Input_Lookup[,"Denominator"]) 
+den_list <- paste(den_list[den_list != ""])
+# Selecting denominators
+OAC_Input_den <- Census_2011_Count[,c("OA",den_list)]
+```
+After completing this, we will them merge these two data frames to preform further manipulations.
+```{r}
+OAC_Input <- merge(OAC_Input,OAC_Input_den, by="OA")
+```
+
+## Calculating Percentages
+To get the precentages, we are interested in the columns where the type is Count, meaning it is not a ratio.
+
+```{r}
+K_Var <- OAC_Input_Lookup[OAC_Input_Lookup$Type == "Count",c(1,3)]
+head(K_Var)
+```
+Now to calculate percentages
+```{r}
+# Create an OA list / data frame
+OAC_Input_PCT_RATIO <- subset(OAC_Input, select = "OA") 
+for (n in 1:nrow(K_Var)){
+  num <- paste(K_Var[n,"VariableCode"]) # Get numerator name
+  den <- paste(K_Var[n,"Denominator"]) # Get denominator name
+  tmp <- data.frame(OAC_Input[,num] / OAC_Input[,den] * 100) # Calculate percentages colnames(tmp) <- num
+  OAC_Input_PCT_RATIO <- cbind(OAC_Input_PCT_RATIO,tmp) # Append the percentages
+  # Remove temporary objects
+  remove(list = c("tmp","num","den")) }
+```
+## Standardized Illness Rates (SIR)
+The goal of this section is to calculate the variable k035 which was the standardized illness rate (SIR) - which needs to be calculated for each subset of the national data (in this case Liverpool): \newline \newline
+First, we will calculate rates of ill people 15 or less and greater than or equal to 65.
+
+```{r}
+# Calculate rates of ill people 15 or less and greater than or equal to 65
+ill_16_64 <- rowSums(Census_2011_Count[,c("KS301EW0005","KS301EW0006")]) # Ill people 16-64
+ill_total <-   rowSums(Census_2011_Count[,c("KS301EW0002","KS301EW0003")]) # All ill people
+ill_L15_G65 <- ill_total - ill_16_64 # Ill people 15 or less and greater than or equal to 65
+
+# Calculate total people 15 or less and greater than or equal to 65
+t_pop_16_64 <- rowSums(Census_2011_Count[,c("KS102EW0007","KS102EW0008","KS102EW0009","KS102EW0010","KS102EW0011","KS102EW0012","KS102EW0013")]) # People 16-64
+t_pop <- Census_2011_Count$KS101EW0001 # All people
+t_pop_L15_G65 <- t_pop - t_pop_16_64 # All people 15 or less and greater than or equal to 65
+
+# Calculate expected rate
+ex_ill_16_64 <- t_pop_16_64 * (sum(ill_16_64)/sum(t_pop_16_64)) # Expected ill 16-64
+ex_ill_L15_G65 <- t_pop_L15_G65 * (sum(ill_L15_G65)/sum(t_pop_L15_G65)) # Expected ill people 15 or less and greater than or equal to 65
+
+ex_ill <- ex_ill_16_64 + ex_ill_L15_G65 # total expected ill people
+
+# Ratio
+SIR <- as.data.frame(ill_total / ex_ill * 100) # ratio between ill people and expected ill people
+colnames(SIR) <- "k035"
+
+# Merge data
+OAC_Input_PCT_RATIO <- cbind(OAC_Input_PCT_RATIO,SIR)
+
+# Remove unwanted objects
+remove(list=c("SIR","ill_16_64","ill_total","ill_L15_G65","t_pop_16_64","t_pop","t_pop_L15_G65","ex_ill_16_64","ex_ill_L15_G65","ex_ill"))
+```
+
+We will now apply the two standardization and normalization procedures to the input data (OAC_Input_PCT_RATIO) - these are inverse hyperbolic sine and then range standardization.
+
+```{r}
+# Calculate inverse hyperbolic sine
+OAC_Input_PCT_RATIO_IHS <- log(OAC_Input_PCT_RATIO[,2:61]+sqrt(OAC_Input_PCT_RATIO[,2:61]^2+1))
+
+# Calculate Range
+range_01 <- function(x){(x-min(x))/(max(x)-min(x))} # range function
+OAC_Input_PCT_RATIO_IHS_01 <- apply(OAC_Input_PCT_RATIO_IHS, 2, range_01) # apply range function to columns
+
+# Add the OA codes back onto the data frame as row names
+rownames(OAC_Input_PCT_RATIO_IHS_01) <- OAC_Input_PCT_RATIO$OA
+```
+
+## Estimating the number of clusters
+With the standardized data, I want to now cluster the data for the spatial analysis. To do this, we must estimate the number of clusters.
+
+```{r}
+library(ggplot2)
+
+# Create a new empty numeric object to store the wss results
+wss <- numeric()
+
+# Run k means for 2-12 clusters and store the wss results
+for (i in 2:12) wss[i] <- sum(kmeans(OAC_Input_PCT_RATIO_IHS_01, centers=i,nstart=20)$withinss)
+
+# Create a data frame with the results, adding a further column for the cluster number
+wss <- data.frame(2:12,wss[-1])
+
+# Plot the results
+names(wss) <- c("k","Twss")
+ggplot(data=wss, aes(x= k, y=Twss)) + geom_path() + geom_point() + scale_x_continuous(breaks=2:12) + labs(y = "Total within sum of squares")
+```
+Based on this, we see thaat the slope of the line begins to tail off between 7 and 8 and for that this this lab choose 7.
+
+## Building the geodemographic
+Loading the cluster in the clustered data.
+```{r}
+load("./data/cluster_7.Rdata")
+```
+Viewing the data.
+
+```{r}
+str(cluster_7)
+```
+With this, we can access the data as follows.
+```{r}
+# Lookup Table
+lookup <- data.frame(cluster_7$cluster) 
+# Add OA codes
+lookup$OA <- rownames(lookup) 
+colnames(lookup) <- c("K_7","OA")
+# Recode clusters as letter
+lookup$SUPER <- LETTERS[lookup$K_7]
+```
+
+## Mapping the clusters as presented in the tutorial
+```{r}
+# Load packages
+library(rgdal)
+library(tmap)
+# Import OA boundaries
+liverpool_SP <- readOGR("./data/Liverpool_OA_2011.geojson")
+# Merge lookup
+liverpool_SP <- merge(liverpool_SP, lookup, by.x="oa_code",by.y="OA")
+m <- tm_shape(liverpool_SP, projection=27700) +
+  tm_polygons(col="SUPER", border.col = "grey50", palette="Set1",border.alpha = .3, title="Cluster"
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+#Create leaflet plot
+tmap_leaflet(m)
+```
+
+## Creating cluster descriptions and profiles
+
+To further understand the classification, we can examine the rates for input attributes within each cluster compared to the Liverpool average.
+To to this, we can created indices.
+
+```{r}
+# Merge Original Data (inc. denominators)
+LiVOAC_Lookup_Input <- merge(lookup,OAC_Input,by="OA",all.x=TRUE)
+
+# Remove Ratio Variables
+LiVOAC_Lookup_Input$k007 <- NULL
+LiVOAC_Lookup_Input$k035 <- NULL
+
+# Create Aggregations by SuperGroup
+SuperGroup <-aggregate(LiVOAC_Lookup_Input[,4:78], by=list(LiVOAC_Lookup_Input$SUPER),  FUN=sum)
+
+# Create a data frame that will be used to append the index scores
+G_Index <- data.frame(SUPER=LETTERS[1:7])
+
+# Loop
+for (n in 1:nrow(K_Var)){
+  
+  num <- paste(K_Var[n,"VariableCode"]) # Get numerator name
+  den <- paste(K_Var[n,"Denominator"]) # Get denominator name
+  tmp <- data.frame(round((SuperGroup[,num] / SuperGroup[,den]) / (sum(SuperGroup[,num])/sum(SuperGroup[,den]))*100)) # Calculate index score - these are also rounded
+  colnames(tmp) <- num
+  
+  G_Index <- cbind(G_Index,tmp) # Append the index calculations
+  
+  # Remove temporary objects
+  remove(list = c("tmp","num","den"))
+}
+
+# View the index scores
+G_Index
+
+```
+
+To assist with spotting trends within the grand index table we can visualize create a plot of shaded cells
+
+```{r}
+library(reshape2)
+
+# Convert from wide to narrow format
+G_Index_Melt <- melt(G_Index, id.vars="SUPER")
+# View the top of the new narrow formatted data frame head(G_Index_Melt)
+```
+
+## Creating shaded plot
+```{r}
+# Recode the index scores into aggregate groupings
+G_Index_Melt$band <- ifelse(G_Index_Melt$value <= 80,"< 80",ifelse(G_Index_Melt$value > 80 & G_Index_Melt$value <= 120,"80-120",">120"))
+
+# Add a column with short descriptions of the variables
+short <- read.csv("./data/OAC_Input_Lookup_short_labels.csv")
+G_Index_Melt <- merge(G_Index_Melt,short,by.x="variable",by.y="VariableCode",all.x=TRUE)
+
+# Order the created factors appropriately - needed to ensure the legend and axis make sense in ggolot2
+G_Index_Melt$band <- factor(G_Index_Melt$band, levels = c("< 80","80-120",">120"))
+G_Index_Melt$VariableDescription <- factor(G_Index_Melt$VariableDescription, levels = short$VariableDescription)
+
+```
+
+Using ggplot2 we can now create a shaded table which you can use to come up with descriptions of the clusters and creative labels.
+
+```{r fig.width=7, fig.height=10}
+library(ggplot2)
+p <- ggplot(G_Index_Melt, aes(x=SUPER, y=VariableDescription, label=value, fill=band)) + 
+  scale_fill_manual(name = "Band",values = c("#EB753B","#F7D865","#B3D09F")) +
+  scale_x_discrete(position = "top") +
+  geom_tile(alpha=0.8) +
+  geom_text(colour="black")
+p
+```
+
+## Enhancing the plot generated in this tutorial:
+```{r}
+
+map <- tm_shape(liverpool_SP, projection=27700) + #Ploting Liverpool using tmap 
+  tm_polygons(col="SUPER", alpha = .70, border.col = "grey40", border.lwd=.3, palette="Set2", title ="CLuster") +
+  tm_layout (frame = FALSE, bg.color = "transparent")+ #adjusting the legend style 
+  tm_scale_bar() + #Addign a scale bar
+tm_compass() # Adding a compass
+
+
+```
+
+## Interpretation of the Clusters
+Based on the map above, we can see that there are 7 distinct clusters, which I will refer to as the letter they are designated as in the map above. First looking at cluster A, this cluster is most closely associated with older individuals and unemployment. Cluster B are mostly associated with owned detached homes for older individuals (ages 45 plus). CLuster C is associated with individuals that either own or rent there home and are most likely newer family with young children. Cluster D is associated younger individuals 0-14, indentifying as unemployed, lving in socially rented property. Note that clusters A, B, C, and D represent areas with few people of color. On the other hand, cLusters E, G, and F are predominately populated by people of color and have privately rented rooms in flats. These clusters are most clearly differentiate by the persons employment type.
