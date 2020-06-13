@@ -1,0 +1,82 @@
+---
+title: "Analysis of Land Cover Changes in Illinois’s Forestry Sector"
+author: "Mark Baker"
+output: pdf_document
+---
+
+# Project Objectives
+\begin{enumerate}
+  \item To calculate changes in forestry land cover year over year focusing on deciduous, evergreen and mixed forest types in Illinois on a county level.
+  \item	To develop an interactive map to increase usability for local and state officials to better aid fund allocation for forest management and reforestation efforts.
+\end{enumerate}
+
+# Background Information
+In 2018, Illinois contained approximately 5 million acres of forest land, accounting for approximately 61 percent of the native flora, 82 percent of the state’s mammals, 62 percent of the bird population, and 79 percent of the amphibian and reptile species (USDA Forest Service 2018). Additionally, forested areas have numerous environmental regulatory services, which include maintaining air and water quality, regulating atmospheric conditions, aiding pollination, retaining and forming soil, and preventing invasive species (Jenkins and Schaap 2018; Miura et al. 2015). However, it is important to note that of the 5 million acres composing Illinois forests, approximately 94 percent is being utilized for timberland and around 83 percent of these forests are privately owned (USDA Forest Service 2018). But besides the environmental benefits associated with Illinois’s forestry sector, forested areas greatly impact recreational activities as well. Based on a 2008 Illinois Outdoor Recreation Survey, 80.6% of Illinois Residents believe that more high quality, undisturbed land should be acquired and protected by the state and 84.6% of residents believe that more wildlife habitat should be protected and restored (Illinois Department of Natural Resources 2009). 
+\newline \newline
+Therefore, in order to ensure sustainable practices, local and state governments take an active role in promoting reforestation and incentivizing the uptake of forest management plans (United States Department of Agriculture 2020). This project will attempt to quantify the change in forestry cover overtime and promote reforestation efforts by developing an interactive map highlighting the changes in forest cover on county and state-level in Illinois. Using this information, government officials and agencies will be able to better allocate funds for incentivizing forest management places and target key areas where reforestation efforts should be focused.
+
+# Data Overview
+For this project, I will be primarily using the Cropland Data Layer (CDL) from the National Agricultural Statistics Service within the United States Department of Agriculture, which is published yearly as a GeoTIFF file. This dataset is a raster representation has a 30-meter ground resolution and shows crop-specific land usage for the continental United States. This dataset was generated using satellite imaging in addition ancillary inputs, which supplement and improve the classification process. The CDL file currently has approximately 90% accuracy for 2019. Specifically, I am interested in using these raster representations because they contain information about deciduous forest (141 classification code), evergreen forest (142 classification code), and mixed forest land coverage (143 classification code), all of which will be the key focus of this research project. In particular, I will utilize these classifications to quantify the changes in forest cover (as deforested\*, no forestry change\*, and reforested\*) in Illinois year over year from 2008 to 2019 (the years in which the data is available) using raster algebra. 
+\newline \newline
+\textit{Deforested\* refers to a pixel that was classified as forested in earlier year by not in the later year. Reforested* refers to a pixel that was classified as forested in later year by not in the earlier year. No forestry change* refers to a pixel that was classified as forested in both years of interest.}
+\newline \newline
+Along with this data, I will also use the county data layer file for Illinois to highlight changes in forestry cover on a county level. The Illinois County Shapefile was obtained from Illinois Geospatial Data Clearinghouse, which was last revised in 2003. The shapefile contains the FIPS code in addition to the county name, which will be utilized when developing the shiny application.
+
+# Data Sources
+\begin{itemize}
+  \item USDA National Agricultural Statistics Service (2018) Cropland Data Layer. USDA-NASS, Washington, DC.
+  \item USDA National Agricultural Statistics Service (2019) Cropland Data Layer. USDA-NASS, Washington, DC.
+  \item Illinois State Geological Survey (1984). Illinois County Boundaries (v2.0) Illinois State Geological Survey, Champaign, Illinois
+
+\end{itemize}
+
+# Data Processing
+\begin{enumerate}
+  \item \textbf{Raster Manipulation}
+    \begin{itemize}
+      \item CDL for both years (Y1, Y2) of interest imported into R.
+      \item Pixels with classification codes 141, 142, and 143 preprocessed for Raster Algebra to quantify difference in forestry cover.
+      \item Forest in Y1 shifted to -1 classification value, forest in Y2 classified as 1, all other classified as 0.
+    \end{itemize}
+  \item \textbf{Raster Algebra}
+    \begin{itemize}
+      \item Using preprocessed data, raster layers are going to be added together as follows (-2Y1 + Y2 + 3)
+      \item Value of 1 signals deforrested* (forested in Y1 but not in Y2), Value of 2 signals no change in forestry cover* (forested in both Y1 and Y2), Value of 3 signals not forestry* (not forested before, not forested now), and Value of 4 signals reforested* (not forrested in Y1, forrested in Y2)
+    \end{itemize}
+    \item \textbf{Raster Calculations}
+      \begin{itemize}
+        \item A specific category (deforrested\*, no forestry change\*, reforrested\*) can be divided by the total count of non zero values to determine percent change.
+        \item Here, IL county file can be introduced to determine these stats on a county level
+      \end{itemize}
+    \item \textbf{Shiny Application} 
+      \begin{itemize}
+        \item The processed data can be utilized in shiny application to make interactive map for project.
+      \end{itemize}
+\end{enumerate}
+
+# Shiny Application
+ The created shiny interface include the following features:
+ \begin{itemize}
+  \item \textbf{Start Year} - \textit{Not Fully Implemented/Fuctional} - Inital year of interest for year change comparison (Y1) as denoted in Raster Calculations above. 
+  \item \textbf{End Year} -  \textit{Not Fully Implemented/Functional} - Final year of interest for year change comparsion (Y2) as denoted in Raster Calculations above.
+  \item \textbf{Forested Area of Interest} - Drop down menu allow user to choose area of interest for the dashboard. Once the area of interest is choosen, the dashboard will update.
+  \item \textbf{Percent Cover Table} - Generated table that highlights the percentage cover of the selected regions that has been reforested, deforested, are forests that experience no change, and are other land.
+  \item \textbf{Selected County Map} - Highlights the select region given by Forested Area of Interest drop down menu on a leaflet plot.
+  \item \textbf{Forest Cover Map} - Highlights the raster land change between start year and end year where red is deforested, blue is no forest change, green is reforested, and white is other land.
+  \item \textbf{Forestry Breakdown Barplot} - Emphasizes the sheer area is square kilometers that is reforested, deforested, and where forestry had no change.
+ \end{itemize}
+
+# Further Work
+Although the sliders for the Start Year and End Year have been implemented, the shiny app currently does not support changing the data source years. Ideally, future work will allow for this implementation so that when changing the slider, the data source changes so that the dashboard can emphasize changes for user input year and export year. To implement this, the data preprocessing protocal included must be utilized on the CDL layers for 2008 - 2019.
+
+# References
+
+\begin{itemize}
+  \item Illinois Department of Natural Resources. 2009. “Illinois Statewide Comprehensive Outdoor Recreation Plan.”
+  \item Jenkins, Michael, and Brian Schaap. 2018. “Forest Ecosystem Services.” 41. 
+  \item Miura, Satoru, Michael Amacher, Thomas Hofer, Jesús San-Miguel-Ayanz, Ernawati, and Richard Thackway. 2015. “Protective Functions and Ecosystem Services of Global Forests in the Past Quarter-Century.” Forest Ecology and Management 352:35–46.
+  \item United States Department of Agriculture. 2020. “Reforestation Overview.” Retrieved May 3, 2020 (https://www.fs.fed.us/restoration/reforestation/overview.shtml).
+  \item USDA Forest Service. 2018. “Forests of Illinois, 2018.” 2.
+\end{itemize}
+
+
