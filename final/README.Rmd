@@ -4,6 +4,9 @@ author: "Mark Baker"
 output: pdf_document
 ---
 
+# About Me
+I am a third year at the University of Chicago, majoring in Computational and Applied Mathematics. Next year, I will be starting a M.S. in Computer Science through the Physical Science Division at the University of Chicago. I am interested in both Enviromental Systems and Accessibilty. This project features Illinois Forestry Sector, examining changes in land cover from 2018-2019.
+
 # Project Objectives
 \begin{enumerate}
   \item To calculate changes in forestry land cover year over year focusing on deciduous, evergreen and mixed forest types in Illinois on a county level.
@@ -54,7 +57,7 @@ Along with this data, I will also use the county data layer file for Illinois to
       \end{itemize}
 \end{enumerate}
 
-# Shiny Application
+# Shiny Application (Figure 1 & 2)
  The created shiny interface include the following features:
  \begin{itemize}
   \item \textbf{Start Year} - \textit{Not Fully Implemented/Fuctional} - Inital year of interest for year change comparison (Y1) as denoted in Raster Calculations above. 
@@ -69,7 +72,7 @@ Along with this data, I will also use the county data layer file for Illinois to
 # Further Work
 Although the sliders for the Start Year and End Year have been implemented, the shiny app currently does not support changing the data source years. Ideally, future work will allow for this implementation so that when changing the slider, the data source changes so that the dashboard can emphasize changes for user input year and export year. To implement this, the data preprocessing protocal included must be utilized on the CDL layers for 2008 - 2019.
 
-# References
+## References
 
 \begin{itemize}
   \item Illinois Department of Natural Resources. 2009. “Illinois Statewide Comprehensive Outdoor Recreation Plan.”
@@ -78,5 +81,10 @@ Although the sliders for the Start Year and End Year have been implemented, the 
   \item United States Department of Agriculture. 2020. “Reforestation Overview.” Retrieved May 3, 2020 (https://www.fs.fed.us/restoration/reforestation/overview.shtml).
   \item USDA Forest Service. 2018. “Forests of Illinois, 2018.” 2.
 \end{itemize}
+
+![Dashboard View examining Illinois's Overall Forestry Sector](visuals/Overall_DashboardView.png)
+
+![Dashboard View examining Cook County's Forestry Sector](visuals/Cook_DashboardView.png)
+
 
 
